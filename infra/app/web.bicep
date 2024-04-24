@@ -83,7 +83,7 @@ module containerAppsApp '../core/host/container-apps/app.bicep' = {
         secretRef: 'cosmos-connection-string'
       }
     ]
-    targetPort: 8080
+    targetPort: 3000
     enableSystemAssignedManagedIdentity: false
     userAssignedManagedIdentityIds: [
       userAssignedManagedIdentity.resourceId

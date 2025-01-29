@@ -50,10 +50,3 @@ This is a simple Express web application to illustrate common basic usage of Azu
     ![Screenshot of the deployed JavaScript web application.](assets/web-js.png)
 
     ![Screenshot of the deployed TypeScript web application.](assets/web-ts.png)
-
-1. (Optionally) Run this web application locally in either the `src/js` or `src/ts` folders:
-
-    ```bash
-    npm install
-    npm run dev
-    ```

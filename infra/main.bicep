@@ -19,7 +19,7 @@ param deploymentUserPrincipalId string = ''
   'request-unit'
 ])
 @description('Deployment type for the Azure Cosmos DB for MongoDB account. Defaults to Azure Cosmos DB for MongoDB vCore.')
-param deploymentType string = 'vcore'
+param deploymentType string = 'request-unit'
 
 // serviceName is used as value for the tag (azd-service-name) azd uses to identify deployment host
 param typeScriptServiceName string = 'typescript-web'

@@ -45,7 +45,7 @@ This is a simple Express web application to illustrate common basic usage of Azu
     azd up
     ```
 
-1. Observed the deployed web application
+1. Observed the deployed web applications.
 
     ![Screenshot of the deployed JavaScript web application.](assets/web-js.png)
 

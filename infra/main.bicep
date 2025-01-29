@@ -1,187 +1,311 @@
-targetScope = 'subscription'
+metadata description = 'Provisions resources for a web application that uses Azure SDK for Node.js to connect to Azure Cosmos DB for MongoDB.'
 
-// The main bicep module to provision Azure resources.
-// For a more complete walkthrough to understand how this file works with azd,
-// see https://learn.microsoft.com/en-us/azure/developer/azure-developer-cli/make-azd-compatible?pivots=azd-create
+targetScope = 'resourceGroup'
 
 @minLength(1)
 @maxLength(64)
-@description('Name of the the environment which is used to generate a short unique hash used in all resources.')
+@description('Name of the environment that can be used as part of naming resource convention.')
 param environmentName string
 
 @minLength(1)
-@description('Primary location for all resources')
+@description('Primary location for all resources.')
 param location string
 
 @description('Id of the principal to assign database and application roles.')
-param principalId string = ''
+param deploymentUserPrincipalId string = ''
 
-// Optional parameters to override the default azd resource naming conventions.
-// Add the following to main.parameters.json to provide values:
-// "resourceGroupName": {
-//      "value": "myGroupName"
-// }
-param resourceGroupName string = ''
-// Optional parameters
-param cosmosAccountName string = ''
-param cosmosDatabaseName string = 'adventure'
-param containerRegistryName string = ''
-param containerAppsEnvName string = ''
-param containerAppsAppName string = ''
-param userAssignedIdentityName string = ''
-param kvName string = ''
+@allowed([
+  'vcore'
+  'request-unit'
+])
+@description('Deployment type for the Azure Cosmos DB for MongoDB account. Defaults to Azure Cosmos DB for MongoDB vCore.')
+param deploymentType string = 'vcore'
 
-var abbrs = loadJsonContent('./abbreviations.json')
+// serviceName is used as value for the tag (azd-service-name) azd uses to identify deployment host
+param typeScriptServiceName string = 'typescript-web'
+param javaScriptServiceName string = 'javascript-web'
 
-// tags that should be applied to all resources.
+var resourceToken = toLower(uniqueString(resourceGroup().id, environmentName, location))
 var tags = {
-  // Tag all resources with the environment name.
   'azd-env-name': environmentName
+  repo: 'https://github.com/azure-samples/cosmos-db-mongodb-nodejs-quickstart'
 }
 
-// Generate a unique token to be used in naming resources.
-// Remove linter suppression after using.
-#disable-next-line no-unused-vars
-var resourceToken = toLower(uniqueString(subscription().id, environmentName, location))
-
-// Name of the service defined in azure.yaml
-// A tag named azd-service-name with this value should be applied to the service host resource, such as:
-//   Microsoft.Web/sites for appservice, function
-// Example usage:
-//   tags: union(tags, { 'azd-service-name': apiServiceName })
-#disable-next-line no-unused-vars
-var apiServiceName = 'python-api'
-
-// Organize resources in a resource group
-resource resourceGroup 'Microsoft.Resources/resourceGroups@2021-04-01' = {
-  name: !empty(resourceGroupName) ? resourceGroupName : 'rg-${environmentName}'
-  location: location
-  tags: tags
-}
-
-// Security resources
-module kv 'core/security/keyvault/keyvault.bicep' = {
-  name: 'kv'
-  scope: resourceGroup
+module managedIdentity 'br/public:avm/res/managed-identity/user-assigned-identity:0.4.0' = {
+  name: 'user-assigned-identity'
   params: {
-    name: !empty(kvName) ? kvName : '${abbrs.keyVault}-${resourceToken}'
-    location: location
-    tags: tags
-    principalId: principalId
-  }
-}
-
-module kvSecret 'core/security/keyvault/keyvault-secret.bicep' = {
-  name: 'kvSecret'
-  scope: resourceGroup
-  params: {
-    keyVaultName: kv.outputs.name
-    name: 'cosmosconnectionstring'
-    secretValue: cosmos.outputs.connectionString
-  }
-}
-
-
-// Give the API access to KeyVault
-module apiKeyVaultAccess 'core/security/keyvault/keyvault-access.bicep' = {
-  name: 'api-keyvault-access'
-  scope: resourceGroup
-  params: {
-    keyVaultName: kv.outputs.name
-    principalId: identity.outputs.principalId
-  }
-}
-
-// Give the User access to KeyVault
-module userKeyVaultAccess 'core/security/keyvault/keyvault-access.bicep' = {
-  name: 'user-keyvault-access'
-  scope: resourceGroup
-  params: {
-    keyVaultName: kv.outputs.name
-    principalId: principalId
-  }
-}
-
-// Use assigned identity
-module identity 'app/identity.bicep' = {
-  name: 'identity'
-  scope: resourceGroup
-  params: {
-    identityName: !empty(userAssignedIdentityName) ? userAssignedIdentityName : '${abbrs.userAssignedIdentity}-${resourceToken}'
+    name: 'managed-identity-${resourceToken}'
     location: location
     tags: tags
   }
 }
 
-// The application database
-module cosmos './app/db.bicep' = {
-  name: 'cosmos'
-  scope: resourceGroup
+module keyVault 'br/public:avm/res/key-vault/vault:0.11.2' = {
+  name: 'key-vault'
   params: {
-    accountName: !empty(cosmosAccountName) ? cosmosAccountName : '${abbrs.cosmosDbAccount}${resourceToken}'
-    databaseName: cosmosDatabaseName
+    name: 'key-vault-${resourceToken}'
+    location: location
+    tags: tags
+    enablePurgeProtection: false
+    enableRbacAuthorization: true
+    publicNetworkAccess: 'Enabled'
+    softDeleteRetentionInDays: 7
+    roleAssignments: union(
+      [
+        {
+          principalId: managedIdentity.outputs.principalId
+          principalType: 'ServicePrincipal'
+          roleDefinitionIdOrName: '4633458b-17de-408a-b874-0445c86b69e6' // Key Vault Secrets User
+        }
+      ],
+      !empty(deploymentUserPrincipalId)
+        ? [
+            {
+              principalId: deploymentUserPrincipalId
+              principalType: 'User'
+              roleDefinitionIdOrName: 'b86a8fe4-44ce-4948-aee5-eccb2c155cd7' // Key Vault Secrets Officer
+            }
+          ]
+        : []
+    )
+  }
+}
+
+module cosmosDbAccount 'app/database.bicep' = {
+  name: 'cosmos-db-account'
+  params: {
+    vCoreAccountName: 'cosmos-db-mongodb-vcore-${resourceToken}'
+    requestUnitAccountName: 'cosmos-db-mongodb-ru-${resourceToken}'
+    location: location
+    tags: tags
+    deploymentType: deploymentType
+    keyVaultResourceId: keyVault.outputs.resourceId
+  }
+}
+
+module containerRegistry 'br/public:avm/res/container-registry/registry:0.8.0' = {
+  name: 'container-registry'
+  params: {
+    name: 'containerreg${resourceToken}'
+    location: location
+    tags: tags
+    acrAdminUserEnabled: false
+    anonymousPullEnabled: false
+    publicNetworkAccess: 'Enabled'
+    acrSku: 'Standard'
+    cacheRules: [
+      {
+        name: 'mcr-cache-rule'
+        sourceRepository: 'mcr.microsoft.com/*'
+        targetRepository: 'mcr/*'
+      }
+    ]
+    roleAssignments: [
+      {
+        principalId: managedIdentity.outputs.principalId
+        roleDefinitionIdOrName: 'AcrPull'
+      }
+    ]
+  }
+}
+
+module registryUserPushAssignment 'br/public:avm/ptn/authorization/resource-role-assignment:0.1.2' = if (!empty(deploymentUserPrincipalId)) {
+  name: 'container-registry-role-assignment-push-user'
+  params: {
+    principalId: deploymentUserPrincipalId
+    resourceId: containerRegistry.outputs.resourceId
+    roleDefinitionId: subscriptionResourceId(
+      'Microsoft.Authorization/roleDefinitions',
+      '8311e382-0749-4cb8-b61a-304f252e45ec'
+    ) // AcrPush built-in role
+  }
+}
+
+module logAnalyticsWorkspace 'br/public:avm/res/operational-insights/workspace:0.9.1' = {
+  name: 'log-analytics-workspace'
+  params: {
+    name: 'log-analytics-${resourceToken}'
     location: location
     tags: tags
   }
 }
 
-// Container registry
-module registry 'app/registry.bicep' = {
-  name: 'registry'
-  scope: resourceGroup
+module containerAppsEnvironment 'br/public:avm/res/app/managed-environment:0.8.2' = {
+  name: 'container-apps-env'
   params: {
-    registryName: !empty(containerRegistryName) ? containerRegistryName : '${abbrs.containerRegistry}${resourceToken}'
+    name: 'container-env-${resourceToken}'
     location: location
     tags: tags
+    logAnalyticsWorkspaceResourceId: logAnalyticsWorkspace.outputs.resourceId
+    zoneRedundant: false
   }
 }
 
-// Web app
-module web 'app/web.bicep' = {
-  name: 'web'
-  scope: resourceGroup
+module containerAppsJsApp 'br/public:avm/res/app/container-app:0.12.1' = {
+  name: 'container-apps-app-js'
   params: {
-    envName: !empty(containerAppsEnvName) ? containerAppsEnvName : '${abbrs.containerAppsEnv}-${resourceToken}'
-    appName: !empty(containerAppsAppName) ? containerAppsAppName : '${abbrs.containerAppsApp}-${resourceToken}'
-    databaseAccountEndpoint: cosmos.outputs.endpoint
-    userAssignedManagedIdentity: {
-      resourceId: identity.outputs.resourceId
-      clientId: identity.outputs.clientId
+    name: 'container-app-js-${resourceToken}'
+    environmentResourceId: containerAppsEnvironment.outputs.resourceId
+    location: location
+    tags: union(tags, { 'azd-service-name': javaScriptServiceName })
+    ingressTargetPort: 3000
+    ingressExternal: true
+    ingressTransport: 'auto'
+    stickySessionsAffinity: 'sticky'
+    scaleMaxReplicas: 1
+    scaleMinReplicas: 1
+    corsPolicy: {
+      allowCredentials: true
+      allowedOrigins: [
+        '*'
+      ]
     }
-    location: location
-    tags: tags
-    serviceTag: 'web'
-    keyVaultEndpoint: kv.outputs.endpoint
-    cosmosconnectionstring: cosmos.outputs.connectionString
+    managedIdentities: {
+      systemAssigned: false
+      userAssignedResourceIds: [
+        managedIdentity.outputs.resourceId
+      ]
+    }
+    registries: [
+      {
+        server: containerRegistry.outputs.loginServer
+        identity: managedIdentity.outputs.resourceId
+      }
+    ]
+    secrets: {
+      secureList: [
+        {
+          name: 'azure-cosmos-db-mongodb-connection-string'
+          keyVaultUrl: '${keyVault.outputs.uri}secrets/${cosmosDbAccount.outputs.keyVaultSecretName}'
+          identity: managedIdentity.outputs.resourceId
+        }
+        {
+          name: 'azure-cosmos-db-mongodb-admin-password'
+          value: cosmosDbAccount.outputs.cosmosDbAccountVCoreKey
+        }
+      ]
+    }
+    containers: [
+      {
+        image: '${containerRegistry.outputs.loginServer}/mcr/dotnet/samples:aspnetapp-9.0'
+        name: 'web-front-end'
+        resources: {
+          cpu: '0.25'
+          memory: '.5Gi'
+        }
+        env: [
+          {
+            name: 'CONFIGURATION__AZURECOSMOSDB__CONNECTIONSTRING'
+            secretRef: 'azure-cosmos-db-mongodb-connection-string'
+          }
+          {
+            name: 'CONFIGURATION__AZURECOSMOSDB__ADMINLOGIN'
+            value: 'app'
+          }
+          {
+            name: 'CONFIGURATION__AZURECOSMOSDB__ADMINPASSWORD'
+            secretRef: 'azure-cosmos-db-mongodb-admin-password'
+          }
+          {
+            name: 'CONFIGURATION__AZURECOSMOSDB__DATABASENAME'
+            value: 'cosmicworks'
+          }
+          {
+            name: 'CONFIGURATION__AZURECOSMOSDB__COLLECTIONNAME'
+            value: 'products'
+          }
+          {
+            name: 'ASPNETCORE_HTTP_PORTS'
+            value: '3000'
+          }
+        ]
+      }
+    ]
   }
 }
 
-// Add outputs from the deployment here, if needed.
-//
-// This allows the outputs to be referenced by other bicep deployments in the deployment pipeline,
-// or by the local machine as a way to reference created resources in Azure for local development.
-// Secrets should not be added here.
-//
-// Outputs are automatically saved in the local azd environment .env file.
-// To see these outputs, run `azd env get-values`,  or `azd env get-values --output json` for json output.
-output AZURE_LOCATION string = location
-output AZURE_TENANT_ID string = tenant().tenantId
+module containerAppsTsApp 'br/public:avm/res/app/container-app:0.12.1' = {
+  name: 'container-apps-app-ts'
+  params: {
+    name: 'container-app-ts-${resourceToken}'
+    environmentResourceId: containerAppsEnvironment.outputs.resourceId
+    location: location
+    tags: union(tags, { 'azd-service-name': typeScriptServiceName })
+    ingressTargetPort: 3000
+    ingressExternal: true
+    ingressTransport: 'auto'
+    stickySessionsAffinity: 'sticky'
+    scaleMaxReplicas: 1
+    scaleMinReplicas: 1
+    corsPolicy: {
+      allowCredentials: true
+      allowedOrigins: [
+        '*'
+      ]
+    }
+    managedIdentities: {
+      systemAssigned: false
+      userAssignedResourceIds: [
+        managedIdentity.outputs.resourceId
+      ]
+    }
+    registries: [
+      {
+        server: containerRegistry.outputs.loginServer
+        identity: managedIdentity.outputs.resourceId
+      }
+    ]
+    secrets: {
+      secureList: [
+        {
+          name: 'azure-cosmos-db-mongodb-connection-string'
+          keyVaultUrl: '${keyVault.outputs.uri}secrets/${cosmosDbAccount.outputs.keyVaultSecretName}'
+          identity: managedIdentity.outputs.resourceId
+        }
+        {
+          name: 'azure-cosmos-db-mongodb-admin-password'
+          value: cosmosDbAccount.outputs.cosmosDbAccountVCoreKey
+        }
+      ]
+    }
+    containers: [
+      {
+        image: '${containerRegistry.outputs.loginServer}/mcr/dotnet/samples:aspnetapp-9.0'
+        name: 'web-front-end'
+        resources: {
+          cpu: '0.25'
+          memory: '.5Gi'
+        }
+        env: [
+          {
+            name: 'CONFIGURATION__AZURECOSMOSDB__CONNECTIONSTRING'
+            secretRef: 'azure-cosmos-db-mongodb-connection-string'
+          }
+          {
+            name: 'CONFIGURATION__AZURECOSMOSDB__ADMINLOGIN'
+            value: 'app'
+          }
+          {
+            name: 'CONFIGURATION__AZURECOSMOSDB__ADMINPASSWORD'
+            secretRef: 'azure-cosmos-db-mongodb-admin-password'
+          }
+          {
+            name: 'CONFIGURATION__AZURECOSMOSDB__DATABASENAME'
+            value: 'cosmicworks'
+          }
+          {
+            name: 'CONFIGURATION__AZURECOSMOSDB__COLLECTIONNAME'
+            value: 'products'
+          }
+          {
+            name: 'ASPNETCORE_HTTP_PORTS'
+            value: '3000'
+          }
+        ]
+      }
+    ]
+  }
+}
 
-
-// Database outputs
-output AZURE_COSMOS_ENDPOINT string = cosmos.outputs.endpoint
-
-// Container outputs
-output AZURE_CONTAINER_REGISTRY_ENDPOINT string = registry.outputs.endpoint
-output AZURE_CONTAINER_REGISTRY_NAME string = registry.outputs.name
-
-// Application outputs
-output AZURE_CONTAINER_APP_ENDPOINT string = web.outputs.endpoint
-output AZURE_CONTAINER_ENVIRONMENT_NAME string = web.outputs.envName
-
-// Identity outputs
-output AZURE_USER_ASSIGNED_IDENTITY_NAME string = identity.outputs.name
-
-// Security outputs
-output KEYVAULT_ENDPOINT string = kv.outputs.endpoint
-output COSMOS_CONNECTION_STRING string = cosmos.outputs.connectionString
+// Azure Container Registry outputs
+output AZURE_CONTAINER_REGISTRY_ENDPOINT string = containerRegistry.outputs.loginServer

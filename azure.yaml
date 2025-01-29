@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/Azure/azure-dev/main/schemas/v1.0/azure.yaml.json
+
+name: cosmos-db-mongodb-nodejs-quickstart
+metadata:
+  template: cosmos-db-mongodb-nodejs-quickstart
+services:
+  javascript-web:
+    project: ./src/js
+    language: js
+    host: containerapp
+    docker:
+      path: ./Dockerfile
+      context: ./
+  typescript-web:
+    project: ./src/ts
+    language: ts
+    host: containerapp
+    docker:
+      path: ./Dockerfile
+      context: ./
+pipeline:
+  provider: github

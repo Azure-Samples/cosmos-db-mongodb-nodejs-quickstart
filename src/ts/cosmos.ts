@@ -115,7 +115,7 @@ export class DataClient {
 
     async readDocument(emit: Emit, collection: Collection<Product>) {
         var query: Filter<Product> = { 
-            id: 'aaaaaaaa-0000-1111-2222-bbbbbbbbbbbb', 
+            _id: 'aaaaaaaa-0000-1111-2222-bbbbbbbbbbbb', 
             category: 'gear-surf-surfboards' 
         };
 

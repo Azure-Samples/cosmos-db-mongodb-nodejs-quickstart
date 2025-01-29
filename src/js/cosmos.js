@@ -26,7 +26,7 @@ export async function start(emit) {
     const databaseName = process.env.CONFIGURATION__AZURECOSMOSDB__DATABASENAME ?? 'cosmicworks';
     const database = client.db(databaseName);
 
-    emit(`Get database:\t${database.id}`);
+    emit(`Get database:\t${database.databaseName}`);
 
     const collectionName = process.env.CONFIGURATION__AZURECOSMOSDB__COLLECTIONNAME ?? 'products';
     const collection = database.collection(collectionName);

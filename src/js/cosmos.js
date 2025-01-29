@@ -35,16 +35,16 @@ export async function start(emit) {
 
     {
         var document = {
-            'id': 'aaaaaaaa-0000-1111-2222-bbbbbbbbbbbb',
-            'category': 'gear-surf-surfboards',
-            'name': 'Yamba Surfboard',
-            'quantity': 12,
-            'price': 850.00,
-            'clearance': false
+            _id: 'aaaaaaaa-0000-1111-2222-bbbbbbbbbbbb',
+            category: 'gear-surf-surfboards',
+            name: 'Yamba Surfboard',
+            quantity: 12,
+            price: 850.00,
+            clearance: false
         };
 
         const query = {
-            id: 'aaaaaaaa-0000-1111-2222-bbbbbbbbbbbb',
+            _id: 'aaaaaaaa-0000-1111-2222-bbbbbbbbbbbb',
             category: 'gear-surf-surfboards'
         };
         const payload = {
@@ -57,22 +57,22 @@ export async function start(emit) {
         var response = await collection.updateOne(query, payload, options);
 
         if (response.acknowledged) {
-            emit(`Upserted item:\t${JSON.stringify(document)}`);
+            emit(`Upserted document:\t${JSON.stringify(document)}`);
         }   
     }
 
     {
-        var item = {
-            'id': 'bbbbbbbb-1111-2222-3333-cccccccccccc',
-            'category': 'gear-surf-surfboards',
-            'name': 'Kiama Classic Surfboard',
-            'quantity': 25,
-            'price': 790.00,
-            'clearance': true
+        var document = {
+            _id: 'bbbbbbbb-1111-2222-3333-cccccccccccc',
+            category: 'gear-surf-surfboards',
+            name: 'Kiama Classic Surfboard',
+            quantity: 25,
+            price: 790.00,
+            clearance: true
         };
 
         const query = {
-            id: 'bbbbbbbb-1111-2222-3333-cccccccccccc',
+            _id: 'bbbbbbbb-1111-2222-3333-cccccccccccc',
             category: 'gear-surf-surfboards'
         };
         const payload = {
@@ -85,21 +85,21 @@ export async function start(emit) {
         var response = await collection.updateOne(query, payload, options);
 
         if (response.acknowledged) {
-            emit(`Upserted item:\t${JSON.stringify(document)}`);
+            emit(`Upserted document:\t${JSON.stringify(document)}`);
         }   
     }
 
     {
         var query = { 
-            id: 'aaaaaaaa-0000-1111-2222-bbbbbbbbbbbb', 
+            _id: 'aaaaaaaa-0000-1111-2222-bbbbbbbbbbbb', 
             category: 'gear-surf-surfboards' 
         };
 
         var response = await collection.findOne(query);
         var read_item = response;
 
-        emit(`Read item id:\t${read_item.id}`);
-        emit(`Read item:\t${JSON.stringify(read_item)}`);
+        emit(`Read document _id:\t${read_item._id}`);
+        emit(`Read document:\t${JSON.stringify(read_item)}`);
     }
 
 	{
@@ -110,7 +110,7 @@ export async function start(emit) {
         var response = await collection.find(query);
 
         for await (const item of response) {
-            emit(`Found item:\t${item.name}\t${item.id}`);
+            emit(`Found document:\t${item.name}\t${item._id}`);
         }
     }
 

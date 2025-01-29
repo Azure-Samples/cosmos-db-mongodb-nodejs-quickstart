@@ -11,13 +11,13 @@ export class DataClient {
 
         const container: Collection<Product> = await this.createCollection(emit, client);
 
-        await this.createItemVerbose(emit, container);
+        await this.createDocumentVerbose(emit, container);
 
-        await this.createItemConcise(emit, container);
+        await this.createDocumentConcise(emit, container);
 
-        await this.readItem(emit, container);
+        await this.readDocument(emit, container);
 
-        await this.queryItems(emit, container);
+        await this.queryDocuments(emit, container);
 
         emit('Current Status:\tFinalizing...');
     }
@@ -59,18 +59,18 @@ export class DataClient {
         return collection;
     }
 
-    async createItemVerbose(emit: Emit, collection: Collection<Product>) {
+    async createDocumentVerbose(emit: Emit, collection: Collection<Product>) {
         var document: Product = {
-            'id': 'aaaaaaaa-0000-1111-2222-bbbbbbbbbbbb',
-            'category': 'gear-surf-surfboards',
-            'name': 'Yamba Surfboard',
-            'quantity': 12,
-            'price': 850.00,
-            'clearance': false
+            _id: 'aaaaaaaa-0000-1111-2222-bbbbbbbbbbbb',
+            category: 'gear-surf-surfboards',
+            name: 'Yamba Surfboard',
+            quantity: 12,
+            price: 850.00,
+            clearance: false
         };
         
         var query: Filter<Product> = {
-            id: 'aaaaaaaa-0000-1111-2222-bbbbbbbbbbbb',
+            _id: 'aaaaaaaa-0000-1111-2222-bbbbbbbbbbbb',
             category: 'gear-surf-surfboards'
         };
         var payload: UpdateFilter<Product> = {
@@ -82,22 +82,22 @@ export class DataClient {
         var response: UpdateResult<Product> = await collection.updateOne(query, payload, options);
 
         if (response.acknowledged) {
-            emit(`Upserted item:\t${JSON.stringify(document)}`);
+            emit(`Upserted document:\t${JSON.stringify(document)}`);
         }
     }
 
-    async createItemConcise(emit: Emit, collection: Collection<Product>) {
+    async createDocumentConcise(emit: Emit, collection: Collection<Product>) {
         var document: Product = {
-            'id': 'bbbbbbbb-1111-2222-3333-cccccccccccc',
-            'category': 'gear-surf-surfboards',
-            'name': 'Kiama Classic Surfboard',
-            'quantity': 25,
-            'price': 790.00,
-            'clearance': true
+            _id: 'bbbbbbbb-1111-2222-3333-cccccccccccc',
+            category: 'gear-surf-surfboards',
+            name: 'Kiama Classic Surfboard',
+            quantity: 25,
+            price: 790.00,
+            clearance: true
         };
         
         var query: Filter<Product> = { 
-            id: 'bbbbbbbb-1111-2222-3333-cccccccccccc', 
+            _id: 'bbbbbbbb-1111-2222-3333-cccccccccccc', 
             category: 'gear-surf-surfboards' 
         };
         var payload: UpdateFilter<Product> = {
@@ -109,11 +109,11 @@ export class DataClient {
         var response: UpdateResult<Product> = await collection.updateOne(query, payload, options);
 
         if (response.acknowledged) {
-            emit(`Upserted item:\t${JSON.stringify(document)}`);
+            emit(`Upserted document:\t${JSON.stringify(document)}`);
         }
     }
 
-    async readItem(emit: Emit, collection: Collection<Product>) {
+    async readDocument(emit: Emit, collection: Collection<Product>) {
         var query: Filter<Product> = { 
             id: 'aaaaaaaa-0000-1111-2222-bbbbbbbbbbbb', 
             category: 'gear-surf-surfboards' 
@@ -122,11 +122,11 @@ export class DataClient {
         var response: WithId<Product> | null = await collection.findOne(query);
         var read_item: Product = response as Product;
 
-        emit(`Read item id:\t${read_item.id}`);
-        emit(`Read item:\t${JSON.stringify(read_item)}`);
+        emit(`Read document _id:\t${read_item._id}`);
+        emit(`Read document:\t${JSON.stringify(read_item)}`);
     }
 
-    async queryItems(emit: Emit, collection: Collection<Product>) {
+    async queryDocuments(emit: Emit, collection: Collection<Product>) {
         var query: Filter<Product> = { 
             category: 'gear-surf-surfboards' 
         };
@@ -134,7 +134,7 @@ export class DataClient {
         var response: FindCursor<WithId<Product>> = await collection.find(query);
 
         for await (const item of response) {
-            emit(`Found item:\t${item.name}\t${item.id}`);
+            emit(`Found document:\t${item.name}\t${item._id}`);
         }
     }
 }

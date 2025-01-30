@@ -8,7 +8,6 @@
   "customizations": {
     "vscode": {
       "extensions": [
-        "bierner.markdown-mermaid",
         "dbaeumer.vscode-eslint",
         "mongodb.mongodb-vscode",
         "ms-azuretools.azure-dev",

@@ -1,18 +1,9 @@
 import { MongoClient } from 'mongodb';
 
 export async function start(emit) {
-    // <create_client>
     
-    const connectionString = process.env.CONFIGURATION__AZURECOSMOSDB__CONNECTIONSTRING
-
-    if (connectionString.includes('<user>')) {
-        connectionString.replace('<user>', encodeURIComponent(process.env.CONFIGURATION__AZURECOSMOSDB__ADMINLOGIN));
-    }
-
-    if (connectionString.includes('<password>')) {
-        connectionString.replace('<password>', encodeURIComponent(process.env.CONFIGURATION__AZURECOSMOSDB__ADMINPASSWORD));
-    }
-
+    // <create_client>    
+    const connectionString = process.env.CONFIGURATION__AZURECOSMOSDB__CONNECTIONSTRING;
     const client = new MongoClient(connectionString);
     // </create_client>
 

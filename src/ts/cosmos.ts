@@ -23,17 +23,9 @@ export class DataClient {
     }
 
     async createClient(emit: Emit): Promise<MongoClient> {
+
         // <create_client>
         const connectionString: string = process.env.CONFIGURATION__AZURECOSMOSDB__CONNECTIONSTRING!
-
-        if (connectionString.includes('<user>')) {
-            connectionString.replace('<user>', encodeURIComponent(process.env.CONFIGURATION__AZURECOSMOSDB__ADMINLOGIN!));
-        }
-
-        if (connectionString.includes('<password>')) {
-            connectionString.replace('<password>', encodeURIComponent(process.env.CONFIGURATION__AZURECOSMOSDB__ADMINPASSWORD!));
-        }
-
         const client = new MongoClient(connectionString);
         // </create_client>
 

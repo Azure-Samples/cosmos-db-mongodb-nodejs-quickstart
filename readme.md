@@ -37,6 +37,16 @@ This is a simple Express web application to illustrate common basic usage of Azu
     azd init --template cosmos-db-mongodb-nodejs-quickstart
     ```
 
+1. (Optional) Select either `vcore` or `request-unit` account type using `azd env set`.
+
+    ```bash
+    azd env set "MONGODB_DEPLOYMENT_TYPE" "vcore"
+    ```
+
+    ```bash
+    azd env set "MONGODB_DEPLOYMENT_TYPE" "request-unit"
+    ```
+
 1. Ensure that **Docker** is running in your environment.
 
 1. Use `azd up` to provision your Azure infrastructure and deploy the web application to Azure.
